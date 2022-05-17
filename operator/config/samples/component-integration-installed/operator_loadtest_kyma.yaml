@@ -1,0 +1,16 @@
+apiVersion: operator.kyma-project.io/v1alpha1
+kind: Kyma
+metadata:
+  name: kyma-1
+  namespace: default
+spec:
+  release: v2.0.5
+  components:
+    - name: manifest
+      settings:
+        - createChart: "true"
+          chartName: httpbingo
+          releaseName: load-test
+          repoName: abc
+          url: https://estahn.github.io/charts
+          clientConfig: "--version=0.1.0"

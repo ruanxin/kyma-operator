@@ -226,69 +226,82 @@ func (r *KymaReconciler) CreateComponentsFromConfigMap(ctx context.Context, kyma
 
 	var componentNamesCreated []string
 	for _, component := range kymaObj.Spec.Components {
-		componentName := component.Name + "-name"
+		if component.Name == "manifest" {
+			for i := 0; i < 20; i++ {
+				componentName := fmt.Sprintf("%s-%02d", kymaObj.Name, i)
 
-		configMap, err := r.GetTemplateConfigMapForRelease(ctx, component.Name, release.GetNew())
-		if err != nil {
-			logger.Error(err, fmt.Sprintf("could not find template configmap for resource %s and release %s, will not re-queue resource %s", component.Name, release.GetNew(), namespacedName))
-			return nil, err
-		}
-		gvk, spec, err := getGvkAndSpecFromConfigMap(configMap, component.Name)
-		if err != nil {
-			return nil, err
-		}
-		res := unstructured.Unstructured{}
-		res.SetGroupVersionKind(*gvk)
-
-		err = r.Get(ctx, client.ObjectKey{Namespace: kymaObj.Namespace, Name: componentName}, &res)
-		if client.IgnoreNotFound(err) != nil {
-			return nil, err
-		}
-
-		// overwrite labels for upgrade / downgrade of component versions
-		// KymaUpdate doesn't require an update
-		if errors.IsNotFound(err) {
-			componentUnstructured := &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"kind":       gvk.Kind,
-					"apiVersion": gvk.Group + "/" + gvk.Version,
-					"metadata": map[string]interface{}{
-						"name":      componentName,
-						"namespace": kymaObj.Namespace,
-						"labels":    map[string]interface{}{},
-					},
-					"spec": spec,
-				},
-			}
-			var charts []map[string]interface{}
-			for _, setting := range component.Settings {
-				chart := map[string]interface{}{}
-				for key, value := range setting {
-					chart[key] = value
+				configMap, err := r.GetTemplateConfigMapForRelease(ctx, component.Name, release.GetNew())
+				if err != nil {
+					logger.Error(err, fmt.Sprintf("could not find template configmap for resource %s and release %s, will not re-queue resource %s", component.Name, release.GetNew(), namespacedName))
+					return nil, err
 				}
-				charts = append(charts, chart)
+				gvk, spec, err := getGvkAndSpecFromConfigMap(configMap, component.Name)
+				if err != nil {
+					return nil, err
+				}
+				res := unstructured.Unstructured{}
+				res.SetGroupVersionKind(*gvk)
+
+				err = r.Get(ctx, client.ObjectKey{Namespace: kymaObj.Namespace, Name: componentName}, &res)
+				if client.IgnoreNotFound(err) != nil {
+					return nil, err
+				}
+
+				// overwrite labels for upgrade / downgrade of component versions
+				// KymaUpdate doesn't require an update
+				if errors.IsNotFound(err) {
+					err2 := r.createResource(ctx, kymaObj, release, gvk, componentName, component, spec, namespacedName)
+					if err2 != nil {
+						return componentNamesCreated, err2
+					}
+
+					logger.Info("successfully created component CR of", "type", component.Name)
+
+					componentNamesCreated = append(componentNamesCreated, component.Name)
+				}
 			}
-			componentUnstructured.Object["spec"].(map[string]interface{})["charts"] = charts
-
-			// set labels
-			setComponentCRLabels(componentUnstructured, component.Name, release)
-
-			// set owner reference
-			if err := controllerutil.SetOwnerReference(kymaObj, componentUnstructured, r.Scheme); err != nil {
-				return nil, fmt.Errorf("error setting owner reference on component CR of type: %s for resource %s %w", component.Name, namespacedName, err)
-			}
-
-			// create resource if not found
-			if err := r.Client.Create(ctx, componentUnstructured, &client.CreateOptions{}); err != nil {
-				return nil, fmt.Errorf("error creating custom resource of type %s %w", component.Name, err)
-			}
-
-			logger.Info("successfully created component CR of", "type", component.Name)
-
-			componentNamesCreated = append(componentNamesCreated, component.Name)
 		}
+
 	}
 	return componentNamesCreated, nil
+}
+
+func (r *KymaReconciler) createResource(ctx context.Context, kymaObj *operatorv1alpha1.Kyma, release release.Release, gvk *schema.GroupVersionKind, componentName string, component operatorv1alpha1.ComponentType, spec interface{}, namespacedName string) error {
+	componentUnstructured := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"kind":       gvk.Kind,
+			"apiVersion": gvk.Group + "/" + gvk.Version,
+			"metadata": map[string]interface{}{
+				"name":      componentName,
+				"namespace": kymaObj.Namespace,
+				"labels":    map[string]interface{}{},
+			},
+			"spec": spec,
+		},
+	}
+	var charts []map[string]interface{}
+	for _, setting := range component.Settings {
+		chart := map[string]interface{}{}
+		for key, value := range setting {
+			chart[key] = value
+		}
+		charts = append(charts, chart)
+	}
+	componentUnstructured.Object["spec"].(map[string]interface{})["charts"] = charts
+
+	// set labels
+	setComponentCRLabels(componentUnstructured, component.Name, release)
+
+	// set owner reference
+	if err := controllerutil.SetOwnerReference(kymaObj, componentUnstructured, r.Scheme); err != nil {
+		return fmt.Errorf("error setting owner reference on component CR of type: %s for resource %s %w", component.Name, namespacedName, err)
+	}
+
+	// create resource if not found
+	if err := r.Client.Create(ctx, componentUnstructured, &client.CreateOptions{}); err != nil {
+		return fmt.Errorf("error creating custom resource of type %s %w", component.Name, err)
+	}
+	return nil
 }
 
 func (r *KymaReconciler) UpdateProgressionLabelsForComponentCRs(ctx context.Context, kymaObj *operatorv1alpha1.Kyma, release release.Release) error {
