@@ -45,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"strings"
 	"time"
 )
 
@@ -355,7 +356,7 @@ func (r *KymaReconciler) reconcileKymaForRelease(ctx context.Context, kyma *oper
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *KymaReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *KymaReconciler) SetupWithManager(setupLog logr.Logger, mgr ctrl.Manager) error {
 	c, err := dynamic.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return err
@@ -368,33 +369,33 @@ func (r *KymaReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		return err
 	}
-
 	controllerBuilder := ctrl.NewControllerManagedBy(mgr).For(&operatorv1alpha1.Kyma{})
-
 	//TODO maybe replace with native REST Handling
 	cs, err := kubernetes.NewForConfig(mgr.GetConfig())
 	// This fetches all resources for our component operator CRDs, might become a problem if component operators
 	// create their own CRDs that we dont need to watch
-	resources, err := cs.ServerResourcesForGroupVersion(schema.GroupVersion{
+	gv := schema.GroupVersion{
 		Group:   labels.ComponentPrefix,
 		Version: "v1alpha1",
-	}.String())
-
+	}
+	resources, err := cs.ServerResourcesForGroupVersion(gv.String())
 	if err != nil {
 		return err
 	}
-
+	dynamicInformerSet := make(map[string]*source.Informer)
 	for _, resource := range resources.APIResources {
-		controllerBuilder = controllerBuilder.
-			Watches(&source.Informer{Informer: informers.ForResource(schema.GroupVersionResource{
-				Group:    resource.Group,
-				Version:  resource.Version,
-				Resource: resource.Kind,
-			}).Informer()},
-				&handler.Funcs{UpdateFunc: r.ComponentChangeHandler},
-				builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}))
+		if strings.HasSuffix(resource.Name, "status") {
+			continue
+		}
+		gvr := gv.WithResource(resource.Name)
+		dynamicInformerSet[gvr.String()] = &source.Informer{Informer: informers.ForResource(gvr).Informer()}
 	}
-
+	for gvr, informer := range dynamicInformerSet {
+		controllerBuilder = controllerBuilder.
+			Watches(informer, &handler.Funcs{UpdateFunc: r.ComponentChangeHandler},
+				builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}))
+		setupLog.Info("initialized dynamic watching", "source", gvr)
+	}
 	return controllerBuilder.Complete(r)
 }
 
