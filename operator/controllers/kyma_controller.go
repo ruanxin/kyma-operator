@@ -67,6 +67,7 @@ func (r *KymaReconciler) GetEventAdapter(kyma *operatorv1alpha1.Kyma) adapter.Ev
 //+kubebuilder:rbac:groups=operator.kyma-project.io,resources=kymas/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch;get;list;watch
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;onEvent;watch
+//+kubebuilder:rbac:groups=component.kyma-project.io,resources=manifests,verbs=create;patch;get;list;onEvent;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
