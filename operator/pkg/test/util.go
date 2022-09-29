@@ -20,7 +20,7 @@ func ModuleTemplateFactory(module v1alpha1.Module, data unstructured.Unstructure
 	}
 	moduleTemplate.Name = module.Name
 	moduleTemplate.Labels[v1alpha1.ModuleName] = module.Name
-	moduleTemplate.Labels[v1alpha1.ControllerName] = module.ControllerName
+	moduleTemplate.Labels[v1alpha1.ControllerName] = "manifest"
 	moduleTemplate.Spec.Channel = module.Channel
 	if data.GetKind() != "" {
 		moduleTemplate.Spec.Data = data

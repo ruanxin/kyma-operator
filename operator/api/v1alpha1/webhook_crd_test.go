@@ -35,9 +35,8 @@ var _ = Describe("Webhook ValidationCreate Strict", func() {
 		}, "10s").Should(Succeed())
 
 		template, err := test.ModuleTemplateFactory(v1alpha1.Module{
-			ControllerName: "manifest",
-			Name:           "example-module-name",
-			Channel:        v1alpha1.ChannelStable,
+			Name:    "example-module-name",
+			Channel: v1alpha1.ChannelStable,
 		}, data)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(k8sClient.Create(webhookServerContext, template)).Should(Succeed())
@@ -53,9 +52,8 @@ var _ = Describe("Webhook ValidationCreate Strict", func() {
 			return k8sClient.Create(webhookServerContext, crd)
 		}, "10s").Should(Succeed())
 		template, err := test.ModuleTemplateFactory(v1alpha1.Module{
-			ControllerName: "manifest",
-			Name:           "example-module-name",
-			Channel:        v1alpha1.ChannelStable,
+			Name:    "example-module-name",
+			Channel: v1alpha1.ChannelStable,
 		}, data)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(k8sClient.Create(webhookServerContext, template)).Should(Succeed())
