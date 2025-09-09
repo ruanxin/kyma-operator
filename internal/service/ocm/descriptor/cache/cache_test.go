@@ -7,12 +7,12 @@ import (
 	"ocm.software/ocm/api/ocm/compdesc"
 	ocmmetav1 "ocm.software/ocm/api/ocm/compdesc/meta/v1"
 
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/cache"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/types"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/cache"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/types"
 )
 
 func TestGet_ForCacheWithoutEntry_ReturnsNoEntry(t *testing.T) {
-	descriptorCache := cache.NewDescriptorCache()
+	descriptorCache := cache.NewService()
 	key := "key 1"
 
 	actual := descriptorCache.Get(key)
@@ -21,7 +21,7 @@ func TestGet_ForCacheWithoutEntry_ReturnsNoEntry(t *testing.T) {
 }
 
 func TestGet_ForCacheWithAnEntry_ReturnsAnEntry(t *testing.T) {
-	descriptorCache := cache.NewDescriptorCache()
+	descriptorCache := cache.NewService()
 	key1 := "key 1"
 	ocmDesc1 := &compdesc.ComponentDescriptor{
 		ComponentSpec: compdesc.ComponentSpec{
@@ -38,7 +38,7 @@ func TestGet_ForCacheWithAnEntry_ReturnsAnEntry(t *testing.T) {
 }
 
 func TestGet_ForCacheWithOverwrittenEntry_ReturnsNewEntry(t *testing.T) {
-	descriptorCache := cache.NewDescriptorCache()
+	descriptorCache := cache.NewService()
 	originalKey, originalValue := "key 1", &types.Descriptor{
 		ComponentDescriptor: &compdesc.ComponentDescriptor{
 			ComponentSpec: compdesc.ComponentSpec{

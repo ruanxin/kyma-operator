@@ -6,8 +6,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/kyma-project/lifecycle-manager/api/v1beta2"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/manifest/img"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/cache"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/pkg/testutils"
 	"github.com/kyma-project/lifecycle-manager/pkg/testutils/builder"
 )
@@ -49,7 +50,8 @@ func TestParse(t *testing.T) {
 			var moduleTemplateFromFile v1beta2.ModuleTemplate
 			builder.ReadComponentDescriptorFromFile(testCase.DescriptorSourceFile,
 				&moduleTemplateFromFile)
-			descriptor, err := provider.NewCachedDescriptorProvider().GetDescriptor(&moduleTemplateFromFile)
+			descriptorCache := cache.NewService()
+			descriptor, err := provider.NewService(descriptorCache).GetDescriptor(&moduleTemplateFromFile)
 			require.NoError(t, err)
 			layers, err := img.Parse(descriptor.ComponentDescriptor)
 			require.NoError(t, err)

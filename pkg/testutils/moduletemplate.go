@@ -10,7 +10,8 @@ import (
 
 	"github.com/kyma-project/lifecycle-manager/api/shared"
 	"github.com/kyma-project/lifecycle-manager/api/v1beta2"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/cache"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/pkg/templatelookup"
 	"github.com/kyma-project/lifecycle-manager/pkg/templatelookup/common"
 	"github.com/kyma-project/lifecycle-manager/pkg/templatelookup/moduletemplateinfolookup"
@@ -216,8 +217,8 @@ func ReadModuleVersionFromModuleTemplate(ctx context.Context,
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch ModuleTemplate: %w", err)
 	}
-
-	descriptorProvider := provider.NewCachedDescriptorProvider()
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 	ocmDesc, err := descriptorProvider.GetDescriptor(moduleTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to get descriptor: %w", err)

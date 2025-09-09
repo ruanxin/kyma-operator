@@ -36,9 +36,10 @@ import (
 
 	"github.com/kyma-project/lifecycle-manager/api"
 	"github.com/kyma-project/lifecycle-manager/internal/controller/mandatorymodule"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/pkg/flags"
 	"github.com/kyma-project/lifecycle-manager/internal/pkg/metrics"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/cache"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/setup"
 	"github.com/kyma-project/lifecycle-manager/pkg/log"
 	"github.com/kyma-project/lifecycle-manager/pkg/queue"
@@ -114,7 +115,8 @@ var _ = BeforeSuite(func() {
 		Warning: 100 * time.Millisecond,
 	}
 
-	descriptorProvider := provider.NewCachedDescriptorProvider()
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 	reconciler = &mandatorymodule.InstallationReconciler{
 		Client:              mgr.GetClient(),
 		DescriptorProvider:  descriptorProvider,

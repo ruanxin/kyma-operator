@@ -25,9 +25,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kyma-project/lifecycle-manager/api/v1beta2"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/manifest/parser"
 	"github.com/kyma-project/lifecycle-manager/internal/pkg/metrics"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/pkg/log"
 	modulecommon "github.com/kyma-project/lifecycle-manager/pkg/module/common"
 	"github.com/kyma-project/lifecycle-manager/pkg/module/sync"
@@ -39,7 +39,7 @@ import (
 type InstallationReconciler struct {
 	client.Client
 	queue.RequeueIntervals
-	DescriptorProvider  *provider.CachedDescriptorProvider
+	DescriptorProvider  *provider.Service
 	RemoteSyncNamespace string
 	Metrics             *metrics.MandatoryModulesMetrics
 }

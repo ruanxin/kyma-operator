@@ -10,7 +10,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kyma-project/lifecycle-manager/api/v1beta2"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/types"
 	"github.com/kyma-project/lifecycle-manager/pkg/templatelookup/common"
 )
 
@@ -18,6 +19,11 @@ var (
 	ErrTemplateNotAllowed       = errors.New("module template not allowed")
 	ErrTemplateUpdateNotAllowed = errors.New("module template update not allowed")
 )
+
+type DescriptorProvider interface {
+	GetDescriptor(template *v1beta2.ModuleTemplate) (*types.Descriptor, error)
+	Add(template *v1beta2.ModuleTemplate) error
+}
 
 type ModuleTemplateInfo struct {
 	*v1beta2.ModuleTemplate
@@ -35,12 +41,12 @@ type ModuleTemplateInfoLookupStrategy interface {
 
 type TemplateLookup struct {
 	client.Reader
-	descriptorProvider               *provider.CachedDescriptorProvider
+	descriptorProvider               DescriptorProvider
 	moduleTemplateInfoLookupStrategy ModuleTemplateInfoLookupStrategy
 }
 
 func NewTemplateLookup(reader client.Reader,
-	descriptorProvider *provider.CachedDescriptorProvider,
+	descriptorProvider *provider.Service,
 	moduleTemplateInfoLookupStrategy ModuleTemplateInfoLookupStrategy,
 ) *TemplateLookup {
 	return &TemplateLookup{

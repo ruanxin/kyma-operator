@@ -28,8 +28,8 @@ import (
 
 	"github.com/kyma-project/lifecycle-manager/api/shared"
 	"github.com/kyma-project/lifecycle-manager/api/v1beta2"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/event"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/types"
 	"github.com/kyma-project/lifecycle-manager/pkg/log"
 	"github.com/kyma-project/lifecycle-manager/pkg/queue"
 	"github.com/kyma-project/lifecycle-manager/pkg/util"
@@ -40,11 +40,28 @@ const (
 	deletingManifestError event.Reason = "DeletingMandatoryModuleManifestError"
 )
 
+type DescriptorProvider interface {
+	GetDescriptor(template *v1beta2.ModuleTemplate) (*types.Descriptor, error)
+}
+
 type DeletionReconciler struct {
 	client.Client
 	event.Event
 	queue.RequeueIntervals
-	DescriptorProvider *provider.CachedDescriptorProvider
+	descriptorProvider DescriptorProvider
+}
+
+func NewDeletionReconciler(clnt client.Client,
+	eventRec event.Event,
+	requeueIntervals queue.RequeueIntervals,
+	descriptorProvider DescriptorProvider,
+) *DeletionReconciler {
+	return &DeletionReconciler{
+		Client:             clnt,
+		Event:              eventRec,
+		RequeueIntervals:   requeueIntervals,
+		descriptorProvider: descriptorProvider,
+	}
 }
 
 func (r *DeletionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -110,7 +127,7 @@ func (r *DeletionReconciler) getCorrespondingManifests(ctx context.Context,
 	error,
 ) {
 	manifests := &v1beta2.ManifestList{}
-	descriptor, err := r.DescriptorProvider.GetDescriptor(template)
+	descriptor, err := r.descriptorProvider.GetDescriptor(template)
 	if err != nil {
 		return nil, fmt.Errorf("not able to get descriptor from template: %w", err)
 	}

@@ -40,7 +40,6 @@ import (
 	"github.com/kyma-project/lifecycle-manager/api/shared"
 	"github.com/kyma-project/lifecycle-manager/internal/controller/kyma"
 	"github.com/kyma-project/lifecycle-manager/internal/crd"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/event"
 	"github.com/kyma-project/lifecycle-manager/internal/pkg/flags"
 	"github.com/kyma-project/lifecycle-manager/internal/pkg/metrics"
@@ -48,6 +47,8 @@ import (
 	"github.com/kyma-project/lifecycle-manager/internal/service/kyma/status/modules"
 	"github.com/kyma-project/lifecycle-manager/internal/service/kyma/status/modules/generator"
 	"github.com/kyma-project/lifecycle-manager/internal/service/kyma/status/modules/generator/fromerror"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/cache"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/setup"
 	"github.com/kyma-project/lifecycle-manager/pkg/log"
 	"github.com/kyma-project/lifecycle-manager/pkg/queue"
@@ -75,7 +76,7 @@ var (
 	ctx                   context.Context
 	cancel                context.CancelFunc
 	cfg                   *rest.Config
-	descriptorProvider    *provider.CachedDescriptorProvider
+	descriptorProvider    *provider.Service
 	testSkrContextFactory *testskrcontext.DualClusterFactory
 )
 
@@ -142,7 +143,8 @@ var _ = BeforeSuite(func() {
 		Warning: 100 * time.Millisecond,
 	}
 
-	descriptorProvider = provider.NewCachedDescriptorProvider()
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 	kcpClient = mgr.GetClient()
 	testEventRec := event.NewRecorderWrapper(mgr.GetEventRecorderFor(shared.OperatorName))
 	testSkrContextFactory = testskrcontext.NewDualClusterFactory(kcpClient.Scheme(), testEventRec)

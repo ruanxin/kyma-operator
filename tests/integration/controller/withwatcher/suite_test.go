@@ -45,7 +45,6 @@ import (
 	"github.com/kyma-project/lifecycle-manager/api/shared"
 	"github.com/kyma-project/lifecycle-manager/internal/controller/kyma"
 	watcherctrl "github.com/kyma-project/lifecycle-manager/internal/controller/watcher"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/event"
 	"github.com/kyma-project/lifecycle-manager/internal/pkg/flags"
 	"github.com/kyma-project/lifecycle-manager/internal/pkg/metrics"
@@ -57,6 +56,8 @@ import (
 	"github.com/kyma-project/lifecycle-manager/internal/service/kyma/status/modules"
 	"github.com/kyma-project/lifecycle-manager/internal/service/kyma/status/modules/generator"
 	"github.com/kyma-project/lifecycle-manager/internal/service/kyma/status/modules/generator/fromerror"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/cache"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/service/watcher/certificate"
 	certmanagerrenewal "github.com/kyma-project/lifecycle-manager/internal/service/watcher/certificate/renewal/certmanager"
 	"github.com/kyma-project/lifecycle-manager/internal/service/watcher/chartreader"
@@ -234,13 +235,15 @@ var _ = BeforeSuite(func() {
 
 	noOpMetricsFunc := func(kymaName, moduleName string) {}
 	moduleStatusGen := generator.NewModuleStatusGenerator(fromerror.GenerateModuleStatusFromError)
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 	err = (&kyma.Reconciler{
 		Client:               kcpClient,
 		SkrContextFactory:    testSkrContextFactory,
 		Event:                testEventRec,
 		RequeueIntervals:     intervals,
 		SKRWebhookManager:    skrWebhookChartManager,
-		DescriptorProvider:   provider.NewCachedDescriptorProvider(),
+		DescriptorProvider:   descriptorProvider,
 		SyncRemoteCrds:       remote.NewSyncCrdsUseCase(kcpClient, testSkrContextFactory, nil),
 		ModulesStatusHandler: modules.NewStatusHandler(moduleStatusGen, kcpClient, noOpMetricsFunc),
 		RemoteSyncNamespace:  flags.DefaultRemoteSyncNamespace,

@@ -32,12 +32,12 @@ import (
 
 	"github.com/kyma-project/lifecycle-manager/api/shared"
 	"github.com/kyma-project/lifecycle-manager/api/v1beta2"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/event"
 	"github.com/kyma-project/lifecycle-manager/internal/manifest/parser"
 	"github.com/kyma-project/lifecycle-manager/internal/pkg/metrics"
 	"github.com/kyma-project/lifecycle-manager/internal/remote"
 	"github.com/kyma-project/lifecycle-manager/internal/service/accessmanager"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/pkg/log"
 	modulecommon "github.com/kyma-project/lifecycle-manager/pkg/module/common"
 	"github.com/kyma-project/lifecycle-manager/pkg/module/sync"
@@ -75,7 +75,7 @@ type Reconciler struct {
 	event.Event
 	queue.RequeueIntervals
 	SkrContextFactory    remote.SkrContextProvider
-	DescriptorProvider   *provider.CachedDescriptorProvider
+	DescriptorProvider   *provider.Service
 	SyncRemoteCrds       remote.SyncCrdsUseCase
 	ModulesStatusHandler ModuleStatusHandler
 	SKRWebhookManager    SKRWebhookManager

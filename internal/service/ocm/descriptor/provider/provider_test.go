@@ -8,14 +8,15 @@ import (
 	"ocm.software/ocm/api/ocm/compdesc"
 
 	"github.com/kyma-project/lifecycle-manager/api/v1beta2"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/cache"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/types"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/cache"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/types"
 	"github.com/kyma-project/lifecycle-manager/pkg/testutils/builder"
 )
 
 func TestGetDescriptor_OnEmptySpec_ReturnsErrDecode(t *testing.T) {
-	descriptorProvider := provider.NewCachedDescriptorProvider() // assuming it handles nil cache internally
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 	template := &v1beta2.ModuleTemplate{}
 
 	_, err := descriptorProvider.GetDescriptor(template)
@@ -25,7 +26,8 @@ func TestGetDescriptor_OnEmptySpec_ReturnsErrDecode(t *testing.T) {
 }
 
 func TestAdd_OnNilTemplate_ReturnsErrTemplateNil(t *testing.T) {
-	descriptorProvider := provider.NewCachedDescriptorProvider()
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 
 	err := descriptorProvider.Add(nil)
 
@@ -34,7 +36,8 @@ func TestAdd_OnNilTemplate_ReturnsErrTemplateNil(t *testing.T) {
 }
 
 func TestGetDescriptor_OnNilTemplate_ReturnsErrTemplateNil(t *testing.T) {
-	descriptorProvider := provider.NewCachedDescriptorProvider()
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 
 	_, err := descriptorProvider.GetDescriptor(nil)
 
@@ -43,7 +46,8 @@ func TestGetDescriptor_OnNilTemplate_ReturnsErrTemplateNil(t *testing.T) {
 }
 
 func TestGetDescriptor_OnInvalidRawDescriptor_ReturnsErrDescriptorNil(t *testing.T) {
-	descriptorProvider := provider.NewCachedDescriptorProvider()
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 	template := builder.NewModuleTemplateBuilder().WithRawDescriptor([]byte("invalid descriptor")).WithDescriptor(nil).Build()
 
 	_, err := descriptorProvider.GetDescriptor(template)
@@ -53,7 +57,8 @@ func TestGetDescriptor_OnInvalidRawDescriptor_ReturnsErrDescriptorNil(t *testing
 }
 
 func TestGetDescriptor_OnEmptyCache_ReturnsParsedDescriptor(t *testing.T) {
-	descriptorProvider := provider.NewCachedDescriptorProvider()
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 	template := builder.NewModuleTemplateBuilder().Build()
 
 	_, err := descriptorProvider.GetDescriptor(template)
@@ -62,7 +67,8 @@ func TestGetDescriptor_OnEmptyCache_ReturnsParsedDescriptor(t *testing.T) {
 }
 
 func TestAdd_OnInvalidRawDescriptor_ReturnsErrDecode(t *testing.T) {
-	descriptorProvider := provider.NewCachedDescriptorProvider()
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 	template := builder.NewModuleTemplateBuilder().WithRawDescriptor([]byte("invalid descriptor")).WithDescriptor(nil).Build()
 
 	err := descriptorProvider.Add(template)
@@ -72,7 +78,8 @@ func TestAdd_OnInvalidRawDescriptor_ReturnsErrDecode(t *testing.T) {
 }
 
 func TestAdd_OnDescriptorTypeButNull_ReturnsNoError(t *testing.T) {
-	descriptorProvider := provider.NewCachedDescriptorProvider()
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 	template := builder.NewModuleTemplateBuilder().WithDescriptor(&types.Descriptor{}).Build()
 
 	err := descriptorProvider.Add(template)
@@ -81,10 +88,8 @@ func TestAdd_OnDescriptorTypeButNull_ReturnsNoError(t *testing.T) {
 }
 
 func TestGetDescriptor_OnEmptyCache_AddsDescriptorFromTemplate(t *testing.T) {
-	descriptorCache := cache.NewDescriptorCache()
-	descriptorProvider := &provider.CachedDescriptorProvider{
-		DescriptorCache: descriptorCache,
-	}
+	descriptorCache := cache.NewService()
+	descriptorProvider := provider.NewService(descriptorCache)
 
 	expected := &types.Descriptor{
 		ComponentDescriptor: &compdesc.ComponentDescriptor{

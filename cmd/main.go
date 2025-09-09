@@ -50,6 +50,7 @@ import (
 	"github.com/kyma-project/lifecycle-manager/api"
 	"github.com/kyma-project/lifecycle-manager/api/shared"
 	"github.com/kyma-project/lifecycle-manager/api/v1beta2"
+	"github.com/kyma-project/lifecycle-manager/cmd/composition/service/ocmdescriptor"
 	"github.com/kyma-project/lifecycle-manager/cmd/composition/service/skrwebhook"
 	"github.com/kyma-project/lifecycle-manager/internal"
 	"github.com/kyma-project/lifecycle-manager/internal/controller/istiogatewaysecret"
@@ -59,7 +60,6 @@ import (
 	"github.com/kyma-project/lifecycle-manager/internal/controller/purge"
 	watcherctrl "github.com/kyma-project/lifecycle-manager/internal/controller/watcher"
 	"github.com/kyma-project/lifecycle-manager/internal/crd"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/event"
 	gatewaysecretclient "github.com/kyma-project/lifecycle-manager/internal/gatewaysecret/client"
 	"github.com/kyma-project/lifecycle-manager/internal/maintenancewindows"
@@ -77,6 +77,7 @@ import (
 	"github.com/kyma-project/lifecycle-manager/internal/service/kyma/status/modules"
 	"github.com/kyma-project/lifecycle-manager/internal/service/kyma/status/modules/generator"
 	"github.com/kyma-project/lifecycle-manager/internal/service/kyma/status/modules/generator/fromerror"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/provider"
 	"github.com/kyma-project/lifecycle-manager/internal/service/skrclient"
 	skrclientcache "github.com/kyma-project/lifecycle-manager/internal/service/skrclient/cache"
 	"github.com/kyma-project/lifecycle-manager/internal/setup"
@@ -216,7 +217,7 @@ func setupManager(flagVar *flags.FlagVar, cacheOptions cache.Options, scheme *ma
 	}
 
 	sharedMetrics := metrics.NewSharedMetrics()
-	descriptorProvider := provider.NewCachedDescriptorProvider()
+	descriptorProvider := ocmdescriptor.ComposeOCMDescriptorProvider()
 	kymaMetrics := metrics.NewKymaMetrics(sharedMetrics)
 	mandatoryModulesMetrics := metrics.NewMandatoryModulesMetrics()
 	maintenanceWindow := initMaintenanceWindow(flagVar.MinMaintenanceWindowSize, logger)
@@ -371,7 +372,7 @@ func scheduleMetricsCleanup(kymaMetrics *metrics.KymaMetrics, cleanupIntervalInM
 	setupLog.V(log.DebugLevel).Info("scheduled job for cleaning up metrics")
 }
 
-func setupKymaReconciler(mgr ctrl.Manager, descriptorProvider *provider.CachedDescriptorProvider,
+func setupKymaReconciler(mgr ctrl.Manager, descriptorProvider *provider.Service,
 	skrContextFactory remote.SkrContextProvider, event event.Event, flagVar *flags.FlagVar, options ctrlruntime.Options,
 	skrWebhookManager *watcher.SkrWebhookManifestManager, kymaMetrics *metrics.KymaMetrics,
 	setupLog logr.Logger, maintenanceWindow maintenancewindows.MaintenanceWindow,
@@ -527,7 +528,7 @@ func setupKcpWatcherReconciler(mgr ctrl.Manager, options ctrlruntime.Options, ev
 }
 
 func setupMandatoryModuleReconciler(mgr ctrl.Manager,
-	descriptorProvider *provider.CachedDescriptorProvider,
+	descriptorProvider *provider.Service,
 	flagVar *flags.FlagVar,
 	options ctrlruntime.Options,
 	metrics *metrics.MandatoryModulesMetrics,
@@ -556,7 +557,7 @@ func setupMandatoryModuleReconciler(mgr ctrl.Manager,
 }
 
 func setupMandatoryModuleDeletionReconciler(mgr ctrl.Manager,
-	descriptorProvider *provider.CachedDescriptorProvider,
+	descriptorProvider *provider.Service,
 	event event.Event,
 	flagVar *flags.FlagVar,
 	options ctrlruntime.Options,
@@ -567,17 +568,17 @@ func setupMandatoryModuleDeletionReconciler(mgr ctrl.Manager,
 	options.CacheSyncTimeout = flagVar.CacheSyncTimeout
 	options.MaxConcurrentReconciles = flagVar.MaxConcurrentMandatoryModuleDeletionReconciles
 
-	if err := (&mandatorymodule.DeletionReconciler{
-		Client:             mgr.GetClient(),
-		Event:              event,
-		DescriptorProvider: descriptorProvider,
-		RequeueIntervals: queue.RequeueIntervals{
+	if err := mandatorymodule.NewDeletionReconciler(
+		mgr.GetClient(),
+		event,
+		queue.RequeueIntervals{
 			Success: flagVar.MandatoryModuleDeletionRequeueSuccessInterval,
 			Busy:    flagVar.KymaRequeueBusyInterval,
 			Error:   flagVar.KymaRequeueErrInterval,
 			Warning: flagVar.KymaRequeueWarningInterval,
 		},
-	}).SetupWithManager(mgr, options); err != nil {
+		descriptorProvider,
+	).SetupWithManager(mgr, options); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MandatoryModule")
 		os.Exit(bootstrapFailedExitCode)
 	}

@@ -7,8 +7,7 @@ import (
 	"ocm.software/ocm/api/ocm/compdesc"
 
 	"github.com/kyma-project/lifecycle-manager/api/v1beta2"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/cache"
-	"github.com/kyma-project/lifecycle-manager/internal/descriptor/types"
+	"github.com/kyma-project/lifecycle-manager/internal/service/ocm/descriptor/types"
 )
 
 var (
@@ -18,17 +17,22 @@ var (
 	ErrDescriptorNil = errors.New("module template contains nil descriptor")
 )
 
-type CachedDescriptorProvider struct {
-	DescriptorCache *cache.DescriptorCache
+type Service struct {
+	descriptorCache DescriptorCache
 }
 
-func NewCachedDescriptorProvider() *CachedDescriptorProvider {
-	return &CachedDescriptorProvider{
-		DescriptorCache: cache.NewDescriptorCache(),
+type DescriptorCache interface {
+	Get(key string) *types.Descriptor
+	Set(key string, value *types.Descriptor)
+}
+
+func NewService(descriptorCache DescriptorCache) *Service {
+	return &Service{
+		descriptorCache: descriptorCache,
 	}
 }
 
-func (c *CachedDescriptorProvider) GetDescriptor(template *v1beta2.ModuleTemplate) (*types.Descriptor, error) {
+func (c *Service) GetDescriptor(template *v1beta2.ModuleTemplate) (*types.Descriptor, error) {
 	if template == nil {
 		return nil, ErrTemplateNil
 	}
@@ -50,7 +54,7 @@ func (c *CachedDescriptorProvider) GetDescriptor(template *v1beta2.ModuleTemplat
 		return nil, err
 	}
 
-	descriptor := c.DescriptorCache.Get(key)
+	descriptor := c.descriptorCache.Get(key)
 	if descriptor != nil {
 		return descriptor, nil
 	}
@@ -71,7 +75,7 @@ func (c *CachedDescriptorProvider) GetDescriptor(template *v1beta2.ModuleTemplat
 	return descriptor, nil
 }
 
-func (c *CachedDescriptorProvider) Add(template *v1beta2.ModuleTemplate) error {
+func (c *Service) Add(template *v1beta2.ModuleTemplate) error {
 	if template == nil {
 		return ErrTemplateNil
 	}
@@ -80,7 +84,7 @@ func (c *CachedDescriptorProvider) Add(template *v1beta2.ModuleTemplate) error {
 		return fmt.Errorf("failed to generate descriptor key: %w", err)
 	}
 
-	descriptor := c.DescriptorCache.Get(key)
+	descriptor := c.descriptorCache.Get(key)
 	if descriptor != nil {
 		return nil
 	}
@@ -88,7 +92,7 @@ func (c *CachedDescriptorProvider) Add(template *v1beta2.ModuleTemplate) error {
 	if template.Spec.Descriptor.Object != nil {
 		desc, ok := template.Spec.Descriptor.Object.(*types.Descriptor)
 		if ok && desc != nil {
-			c.DescriptorCache.Set(key, desc)
+			c.descriptorCache.Set(key, desc)
 			return nil
 		}
 	}
@@ -106,6 +110,6 @@ func (c *CachedDescriptorProvider) Add(template *v1beta2.ModuleTemplate) error {
 		return ErrTypeAssert
 	}
 
-	c.DescriptorCache.Set(key, descriptor)
+	c.descriptorCache.Set(key, descriptor)
 	return nil
 }
