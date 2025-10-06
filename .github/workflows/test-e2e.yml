@@ -85,8 +85,6 @@ jobs:
     steps:
       - name: Checkout lifecycle-manager
         uses: actions/checkout@v4
-        with:
-          path: lifecycle-manager
       - name: Checkout template-operator
         uses: actions/checkout@v4
         with:
@@ -94,34 +92,34 @@ jobs:
           path: template-operator
 
       - name: Get configuration
-        uses: ./lifecycle-manager/.github/actions/get-configuration
+        uses: ./.github/actions/get-configuration
         id: configuration
       - name: Setup tools
-        uses: ./lifecycle-manager/.github/actions/setup-tools
+        uses: ./.github/actions/setup-tools
         with:
           k8s_version: ${{ steps.configuration.outputs.k8s_version }}
           istio_version: ${{ steps.configuration.outputs.istio_version }}
           k3d_version: ${{ steps.configuration.outputs.k3d_version }}
           modulectl_version: ${{ steps.configuration.outputs.modulectl_version }}
-          go-version-file: lifecycle-manager/go.mod
-          cache-dependency-path: lifecycle-manager/go.sum
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
       - name: Setup test clusters
-        uses: ./lifecycle-manager/.github/actions/setup-test-clusters
+        uses: ./.github/actions/setup-test-clusters
         with:
           k8s_version: ${{ steps.configuration.outputs.k8s_version }}
           cert_manager_version: ${{ steps.configuration.outputs.cert_manager_version }}
 
       - name: Setup private registry
         if: ${{ matrix.e2e-test == 'oci-reg-cred-secret' }}
-        uses: ./lifecycle-manager/.github/actions/setup-private-registry
+        uses: ./.github/actions/setup-private-registry
 
       - name: Deploy lifecycle-manager
-        uses: ./lifecycle-manager/.github/actions/deploy-lifecycle-manager-e2e
+        uses: ./.github/actions/deploy-lifecycle-manager-e2e
         with:
           klm_version_tag: ${{ steps.configuration.outputs.klm_version_tag }}
           klm_image_repo: ${{ steps.configuration.outputs.klm_image_repo }}
       - name: Deploy template-operator
-        uses: ./lifecycle-manager/.github/actions/deploy-template-operator-with-modulereleasemeta
+        uses: ./.github/actions/deploy-template-operator-with-modulereleasemeta
         env:
           ModuleDeploymentName: template-operator-controller-manager
           ModuleDeploymentNameInNewerVersion: template-operator-v2-controller-manager
@@ -143,5 +141,5 @@ jobs:
           make -C tests/e2e ${{ matrix.e2e-test }}
       - name: Post debug
         if: always()
-        run: ./lifecycle-manager/.github/scripts/debug/teardown.sh
+        run: ./.github/scripts/debug/teardown.sh
         continue-on-error: true
